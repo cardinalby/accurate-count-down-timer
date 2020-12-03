@@ -1,1 +1,3 @@
-# accurate-count-down-timer
+# Accurate version of Android CountDownTimer
+
+Has the same interface
