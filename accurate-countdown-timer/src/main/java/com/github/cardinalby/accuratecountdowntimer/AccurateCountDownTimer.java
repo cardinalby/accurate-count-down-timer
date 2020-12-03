@@ -28,8 +28,6 @@ public abstract class AccurateCountDownTimer {
      */
     private boolean mCancelled = false;
 
-    private long mExpectedTickAt = 0;
-
     /**
      * @param millisInFuture The number of millis in the future from the call
      *   to {@link #start()} until the countdown is done and {@link #onFinish()}
@@ -59,9 +57,7 @@ public abstract class AccurateCountDownTimer {
             onFinish();
             return this;
         }
-        // expect handle function called without delay
-        mExpectedTickAt = SystemClock.elapsedRealtime();
-        mStopTimeInFuture = mExpectedTickAt + mMillisInFuture;
+        mStopTimeInFuture = SystemClock.elapsedRealtime() + mMillisInFuture;
         mHandler.sendMessage(mHandler.obtainMessage(MSG));
         return this;
     }
@@ -87,27 +83,34 @@ public abstract class AccurateCountDownTimer {
                 if (mCancelled) {
                     return;
                 }
+
                 final long millisLeft = mStopTimeInFuture - SystemClock.elapsedRealtime();
+
                 if (millisLeft <= 0) {
                     onFinish();
                 } else {
+                    long lastTickStart = SystemClock.elapsedRealtime();
                     onTick(millisLeft);
-                    // take into account looper delay + user's onTick taking time to execute
-                    long lastTickDuration = SystemClock.elapsedRealtime() - mExpectedTickAt;
+
+                    // take into account user's onTick taking time to execute
+                    long lastTickDuration = SystemClock.elapsedRealtime() - lastTickStart;
                     long delay;
+
                     if (millisLeft < mCountdownInterval) {
                         // just delay until done
                         delay = millisLeft - lastTickDuration;
+
                         // special case: user's onTick took more than interval to
                         // complete, trigger onFinish without delay
                         if (delay < 0) delay = 0;
                     } else {
                         delay = mCountdownInterval - lastTickDuration;
+
                         // special case: user's onTick took more than interval to
                         // complete, skip to next interval
                         while (delay < 0) delay += mCountdownInterval;
                     }
-                    mExpectedTickAt = SystemClock.elapsedRealtime() + delay;
+
                     sendMessageDelayed(obtainMessage(MSG), delay);
                 }
             }
