@@ -28,6 +28,8 @@ public abstract class AccurateCountDownTimer {
      */
     private boolean mCancelled = false;
 
+    private long mExpectedTickAt = 0;
+
     /**
      * @param millisInFuture The number of millis in the future from the call
      *   to {@link #start()} until the countdown is done and {@link #onFinish()}
@@ -57,7 +59,9 @@ public abstract class AccurateCountDownTimer {
             onFinish();
             return this;
         }
+        // expect handle function called without delay
         mStopTimeInFuture = SystemClock.elapsedRealtime() + mMillisInFuture;
+        mExpectedTickAt = SystemClock.elapsedRealtime();
         mHandler.sendMessage(mHandler.obtainMessage(MSG));
         return this;
     }
@@ -89,11 +93,10 @@ public abstract class AccurateCountDownTimer {
                 if (millisLeft <= 0) {
                     onFinish();
                 } else {
-                    long lastTickStart = SystemClock.elapsedRealtime();
                     onTick(millisLeft);
 
-                    // take into account user's onTick taking time to execute
-                    long lastTickDuration = SystemClock.elapsedRealtime() - lastTickStart;
+                    // take into account looper delay + user's onTick taking time to execute
+                    long lastTickDuration = SystemClock.elapsedRealtime() - mExpectedTickAt;
                     long delay;
 
                     if (millisLeft < mCountdownInterval) {
@@ -111,6 +114,7 @@ public abstract class AccurateCountDownTimer {
                         while (delay < 0) delay += mCountdownInterval;
                     }
 
+                    mExpectedTickAt = SystemClock.elapsedRealtime() + delay;
                     sendMessageDelayed(obtainMessage(MSG), delay);
                 }
             }
